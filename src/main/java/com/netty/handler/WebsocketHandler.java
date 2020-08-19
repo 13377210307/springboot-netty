@@ -9,6 +9,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import io.netty.channel.group.DefaultChannelGroup;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.util.concurrent.GlobalEventExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -92,6 +93,60 @@ public class WebsocketHandler extends SimpleChannelInboundHandler<TextWebSocketF
         }
     }
 
+    // 空闲处理
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+
+        if (evt instanceof IdleStateEvent) {
+            // evt向下转型IdleStateEvent
+            IdleStateEvent event = (IdleStateEvent) evt;
+
+            Integer eventType = 0;
+            switch (event.state()) {
+                case READER_IDLE:
+                    eventType = 1;
+                    //eventType = "对方长时间未读您的消息，需要提醒他吗？";
+                    break;
+                case WRITER_IDLE:
+                    eventType = 2;
+                    //eventType = "对方长时间未回复消息，需要提醒他吗？";
+                    break;
+                case ALL_IDLE:
+                    eventType = 3;
+                    //eventType = "对方长时间未读或回复您的消息，可能下线了";
+                    break;
+                default:
+                    eventType = 0;
+                    break;
+            }
+            // 从redis中获取用户信息
+            String username = (String)this.redisUtil.get(String.valueOf(ctx.channel().id()));
+
+            // 遍历通道
+            for (Channel channel : channels) {
+                if (ctx.channel() != channel) {
+                    String text = "";
+                    // 两个通道不一致
+                    if (1 == eventType) {
+                        // 未读
+                        text = username+" 长时间未读您的消息，亲亲，这边建议您打个电话催一下喔";
+                    }
+                    if(2 == eventType) {
+                        // 未写
+                        text = username+" 长时间未回复消息，亲亲，这边建议您直接拉黑喔";
+                    }
+                    if (3 == eventType){
+                        // 未读未写
+                        text = username + " 长时间未读或回复您的消息，亲亲，这边建议您下次见他的时候带个砖头喔";
+                    }
+                    channel.writeAndFlush(new TextWebSocketFrame(username+"："+text));
+                }else {
+                    System.out.println("您已长时间未操作群聊");
+                }
+            }
+        }
+    }
+
     // 异常处理
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
@@ -101,4 +156,5 @@ public class WebsocketHandler extends SimpleChannelInboundHandler<TextWebSocketF
         cause.printStackTrace();
         ctx.close();
     }
+
 }

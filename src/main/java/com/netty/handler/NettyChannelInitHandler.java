@@ -7,9 +7,12 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import io.netty.handler.stream.ChunkedWriteHandler;
+import io.netty.handler.timeout.IdleStateHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+
+import java.util.concurrent.TimeUnit;
 
 @Component
 @Qualifier("NettyChannelInitHandler")
@@ -30,6 +33,9 @@ public class NettyChannelInitHandler extends ChannelInitializer<SocketChannel> {
         pipeline.addLast(new ChunkedWriteHandler());
 
         pipeline.addLast(new WebSocketServerProtocolHandler("/ws"));
+
+        // 设置空闲识别
+        pipeline.addLast(new IdleStateHandler(60,60,120, TimeUnit.SECONDS));
 
         pipeline.addLast(websocketHandler);
     }
