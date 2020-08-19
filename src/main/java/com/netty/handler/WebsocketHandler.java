@@ -51,7 +51,7 @@ public class WebsocketHandler extends SimpleChannelInboundHandler<TextWebSocketF
         //遍历所有通道
         for (Channel channel : channels) {
             // 将信息写入到通道中
-            channel.writeAndFlush(new TextWebSocketFrame("[新用户："+username+"]"+"加入群聊"));
+            channel.writeAndFlush(new TextWebSocketFrame("[新用户："+username+"]：加入群聊"));
         }
         // 将通道id作为key，用户名作为value保存在redis
         this.redisUtil.set(inComing.id().toString(),username);
@@ -65,7 +65,7 @@ public class WebsocketHandler extends SimpleChannelInboundHandler<TextWebSocketF
         // 根据通道id从redis中获取用户名
         String username  = (String)this.redisUtil.get(ctx.channel().id().toString());
         for (Channel channel: channels) {
-            channel.writeAndFlush(new TextWebSocketFrame("[用户："+username+"]"+"退出群聊"));
+            channel.writeAndFlush(new TextWebSocketFrame("[用户："+username+"]："+"退出群聊"));
         }
         // 删除redis中保存的通道信息
         this.redisUtil.del(String.valueOf(ctx.channel().id()));
@@ -139,7 +139,7 @@ public class WebsocketHandler extends SimpleChannelInboundHandler<TextWebSocketF
                         // 未读未写
                         text = username + " 长时间未读或回复您的消息，亲亲，这边建议您下次见他的时候带个砖头喔";
                     }
-                    channel.writeAndFlush(new TextWebSocketFrame(username+"："+text));
+                    channel.writeAndFlush(new TextWebSocketFrame("[系统提醒]："+text));
                 }else {
                     System.out.println("您已长时间未操作群聊");
                 }
